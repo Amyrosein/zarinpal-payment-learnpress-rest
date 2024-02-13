@@ -8,7 +8,6 @@
  * @package  LearnPress/Zarinpal/Classes
  * @version  2.0.0
  */
-// session_start();
 
 // Prevent loading this file directly
 defined('ABSPATH') || exit;
@@ -30,10 +29,6 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		 */
 		private $startPay = 'https://www.zarinpal.com/pg/StartPay/';
 
-		/**
-		 * @var string
-		 */
-		private $verifyUrl = 'https://api.zarinpal.com/pg/v4/payment/verify.json';
 
 		/**
 		 * @var string
@@ -83,9 +78,10 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		{
 			$this->id = 'zarinpal';
 
+
 			$this->method_title       =  __('Zarinpal', 'learnpress-zarinpal');;
 			$this->method_description = __('Make a payment with Zarinpal.', 'learnpress-zarinpal');
-			$this->icon               = '';
+			$this->icon               = LP_ADDON_ZARINPAL_PAYMENT_URL . '/assets/images/zarinpal.png';
 
 			// Get settings
 			$this->title       = LP()->settings->get("{$this->id}.title", $this->method_title);
@@ -143,15 +139,17 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		 */
 		public function get_settings()
 		{
-
 			return apply_filters(
 				'learn-press/gateway-payment/zarinpal/settings',
 				array(
+                    array(
+                        'type' => 'title',
+                    ),
 					array(
 						'title'   => __('Enable', 'learnpress-zarinpal'),
 						'id'      => '[enable]',
 						'default' => 'no',
-						'type'    => 'yes-no'
+						'type'    => 'checkbox'
 					),
 					array(
 						'type'       => 'text',
@@ -204,7 +202,10 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 								)
 							)
 						)
-					)
+					),
+                    array(
+                        'type' => 'sectionend',
+                    ),
 				)
 			);
 		}
@@ -215,7 +216,7 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		public function get_payment_form()
 		{
 			ob_start();
-			$template = learn_press_locate_template('form.php', learn_press_template_path() . '/addons/zarinpal-payment/', LP_ADDON_ZARINPAL_PAYMENT_TEMPLATE);
+            $template = learn_press_locate_template('form.php', learn_press_template_path() . '/addons/zarinpal-payment/', LP_ADDON_ZARINPAL_PAYMENT_TEMPLATE);
 			include $template;
 
 			return ob_get_clean();
@@ -237,17 +238,6 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 			}
 		}
 
-		/**
-		 * @return mixed
-		 */
-		public function get_icon()
-		{
-			if (empty($this->icon)) {
-				$this->icon = LP_ADDON_ZARINPAL_PAYMENT_URL . 'assets/images/zarinpal.png';
-			}
-
-			return parent::get_icon();
-		}
 
 		/**
 		 * Check gateway available.
@@ -274,26 +264,17 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 			if ($this->order) {
 
 				$user            = learn_press_get_current_user();
-				$currency_code = learn_press_get_currency();
-				if ($currency_code == 'IRR') {
-					$amount = $this->order->get_total();
-				} else {
-					$amount = $this->order->get_total() * 10;
-				}
 
 				$this->form_data = array(
-					'amount'      => $amount,
-					'currency'    => strtolower(learn_press_get_currency()),
-					'token'       => $this->token,
-					'description' => sprintf(__("Charge for %s", "learnpress-zarinpal"), $user->get_data('email')),
+					'amount'      => $this->order->get_total(),
+					'description' => sprintf("خرید کاربر %s %s شماره سفارش : %s", $user->get_first_name(), $user->get_last_name(), $this->order->get_id()),
 					'customer'    => array(
-						'name'          => $user->get_data('display_name'),
+						'name'          => $user->get_first_name() . " " . $user->get_last_name(),
 						'billing_email' => $user->get_data('email'),
 					),
 					'errors'      => isset($this->posted['form_errors']) ? $this->posted['form_errors'] : ''
 				);
 			}
-
 			return $this->form_data;
 		}
 
@@ -336,11 +317,11 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		public function process_payment($order)
 		{
 			$this->order = learn_press_get_order($order);
-			$zarinpal = $this->get_zarinpal_authority();
+			$authority = $this->get_zarinpal_authority();
 			$gateway_url = $this->startPay . $this->authority;
 			$json = array(
-				'result'   => $zarinpal ? 'success' : 'fail',
-				'redirect'   => $zarinpal ? $gateway_url : ''
+				'result'   => $authority ? 'success' : 'fail',
+				'redirect'   => $authority ? $gateway_url : ''
 			);
 
 			return $json;
@@ -356,16 +337,21 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 		public function get_zarinpal_authority()
 		{
 			if ($this->get_form_data()) {
-				$checkout = LP()->checkout();
 				$data = array(
 					"merchant_id" => $this->merchant,
 					"amount" => $this->form_data['amount'],
+                    "currency" => $this->get_form_data()['currency'],
 					"callback_url" => get_site_url() . '/?' . learn_press_get_web_hook('zarinpal') . '=1&order_id=' . $this->order->get_id(),
 					"description" => $this->form_data['description'],
 					"metadata" => [
-						"email" => (!empty($this->posted['email'])) ? $this->posted['email'] : "0", "mobile" => (!empty($this->posted['mobile'])) ? $this->posted['mobile'] : "0"
+                        'order_id' => $this->order->get_id()
 					],
 				);
+
+                if (!empty($this->posted['email']))
+                    $data['metadata']['email'] = $this->posted['email'];
+                if (!empty($this->posted['mobile']))
+                    $data['metadata']['mobile'] = $this->posted['mobile'];
 
 				$jsonData = json_encode($data);
 				$ch = curl_init('https://api.zarinpal.com/pg/v4/payment/request.json');
@@ -382,9 +368,6 @@ if (!class_exists('LP_Gateway_Zarinpal')) {
 				$err = curl_error($ch);
 				$result = json_decode($result, true, JSON_PRETTY_PRINT);
 				curl_close($ch);
-
-				// echo "<pre>" . print_r($result, true) . "</pre>";
-				// die;
 
 				if ($err) {
 					echo "cURL Error #:" . $err;
