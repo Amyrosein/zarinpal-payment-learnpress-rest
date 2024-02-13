@@ -4,7 +4,7 @@ Plugin Name: افزونه پرداخت زرین پال برای لرن پرس
 Description: افزونه پرداخت امن زرین پال برای لرن پرس
 Author: Amirhossein Taghizadeh
 Link: https://zarinpal.com
-Version: 2.0.0
+Version: 2.1.0
 Author URI: https://github.com/Amyrosein
 Tags: learnpress,zarinpal,gateway,payment,زیبال,lms,لرن پرس
 Text Domain: learnpress-zarinpal
