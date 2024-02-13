@@ -43,7 +43,7 @@ if (!class_exists('LP_Addon_Zarinpal_Payment')) {
 		 */
 		protected function _define_constants()
 		{
-			define('LP_ADDON_ZARINPAL_PAYMENT_PATH', dirname(LP_ADDON_ZARINPAL_PAYMENT_FILE));
+            define('LP_ADDON_ZARINPAL_PAYMENT_PATH', dirname(LP_ADDON_ZARINPAL_PAYMENT_FILE));
 			define('LP_ADDON_ZARINPAL_PAYMENT_INC', LP_ADDON_ZARINPAL_PAYMENT_PATH . '/inc/');
 			define('LP_ADDON_ZARINPAL_PAYMENT_URL', plugin_dir_url(LP_ADDON_ZARINPAL_PAYMENT_FILE));
 			define('LP_ADDON_ZARINPAL_PAYMENT_TEMPLATE', LP_ADDON_ZARINPAL_PAYMENT_PATH . '/templates/');
